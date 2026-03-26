@@ -1,0 +1,5 @@
+Configuration,Token F1,ATLAS Score
+Full ATLAS,0.21,0.4
+w/o KL,0.18,0.35
+w/o Consistency,0.17,0.33
+w/o Grounding,0.16,0.31

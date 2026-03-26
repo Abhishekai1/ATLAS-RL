@@ -1,0 +1,4 @@
+Model,Accuracy(F1),Hallucination,Consistency,Grounding,ATLAS Score
+Baseline LLM,0.1954,0.38,0.2891,0.1537,0.3695
+RAG,0.1182,0.2458,0.1755,0.3816,0.4095
+ATLAS-RL,0.2192,0.1451,0.1977,0.3506,0.4057
