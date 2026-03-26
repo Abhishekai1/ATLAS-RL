@@ -1,176 +1,254 @@
-# 🚀 ATLAS-RL: Reliability-Aware Learning for Multimodal & LLM Systems
-
-<p align="left">
-  <img src="https://komarev.com/ghpvc/?username=Abhishekai1&label=Project%20Views&color=0e75b6&style=flat" alt="views" />
-</p>
+# ATLAS-RL: Reliability-Aware Learning for Robust Language Models
 
 ---
 
-## 🧠 Overview
+## **Abstract**
 
-**ATLAS-RL** is a reliability-aware training and evaluation framework designed to improve the robustness of Large Language Models (LLMs) under:
-
-- Distribution shifts  
-- Noisy / corrupted retrieval  
-- Multimodal inconsistencies  
-- Hallucination-prone settings  
-
-Unlike standard pipelines, ATLAS-RL explicitly models reliability signals and optimizes generation using a composite reliability objective.
+We introduce **ATLAS-RL**, a reliability-aware framework for training and evaluating large language models (LLMs) under perturbations. Unlike conventional approaches that optimize primarily for accuracy, ATLAS-RL explicitly models **prediction stability, grounding, and consistency**. The framework integrates perturbation-based analysis, NLI-driven diagnostics, and a composite reliability objective to produce models that remain robust under distribution shifts, noisy retrieval, and hallucination-prone conditions.
 
 ---
 
-## 🏗️ Architecture
+## **1. Overview**
 
-The system follows a modular pipeline:
+**ATLAS-RL** is a reliability-aware training and evaluation framework designed to enhance the robustness of **Large Language Models (LLMs)** under challenging and realistic conditions.
 
-                ┌──────────────────────────┐
-                │        Query (Q)         │
-                └────────────┬─────────────┘
-                             │
-                    ┌────────▼────────┐
-                    │ Retrieval Module │
-                    │ (FAISS + MiniLM)│
-                    └────────┬────────┘
-                             │ Top-K Docs
-                ┌────────────▼────────────┐
-                │   Perturbation Module   │
-                │ (Query + Context Noise) │
-                └────────────┬────────────┘
-                             │
-                ┌────────────▼────────────┐
-                │  Generation Module      │
-                │ (Flan-T5 / LLM)         │
-                └────────────┬────────────┘
-                             │
-                ┌────────────▼────────────┐
-                │ Diagnostic Module       │
-                │ (NLI-based Evaluation)  │
-                └────────────┬────────────┘
-                             │
-                ┌────────────▼────────────┐
-                │  ATLAS Score Computation│
-                │ (Reliability Objective) │
-                └─────────────────────────┘
+Specifically, the framework targets:
+
+- **Distribution Shifts** — stable performance under unseen inputs  
+- **Noisy / Corrupted Retrieval** — robustness to imperfect context  
+- **Multimodal Inconsistencies** — handling conflicting signals  
+- **Hallucination-Prone Settings** — reducing unsupported outputs  
+
+Unlike standard pipelines, ATLAS-RL treats **reliability as a first-class objective**, ensuring models remain **stable, grounded, and consistent under perturbations**.
 
 ---
 
-## ⚙️ Key Components
+## **2. System Architecture**
 
-### 🔍 Retrieval Module
-- SentenceTransformers (MiniLM) + FAISS  
-- Dense semantic retrieval  
-- Top-K document selection  
-
-### 🔄 Perturbation Module
-- Query paraphrasing  
-- Context corruption (noise injection)  
-- Simulates real-world instability  
-
-### 🧠 Generation Module
-- FLAN-T5 based generation  
-- Produces answer + token-level likelihoods  
-
-### 📊 Diagnostics Module
-Uses NLI (BART-MNLI) to compute:
-- Consistency  
-- Grounding  
-- Hallucination  
-- Uncertainty  
+```text
+Input Query q
+      │
+      ▼
+┌──────────────────────────┐
+│   Retrieval Module       │
+│  (MiniLM + FAISS Index)  │
+└────────────┬─────────────┘
+             │ Top-K Docs D
+             ▼
+┌──────────────────────────┐
+│   Perturbation Module    │
+│  q' = Paraphrase(q)      │
+│  D' = Corrupt(D)         │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│   Generation Module      │
+│  a  = LM(q, D)           │
+│  a' = LM(q', D')         │
+│  (token log-probs)       │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│   Diagnostics Module     │
+│  Consistency (NLI)       │
+│  Grounding (NLI)         │
+│  Hallucination (NLI)     │
+│  Uncertainty (entropy)   │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│   ATLAS Scoring          │
+│  Reliability + Metrics   │
+└──────────────────────────┘
+```
 
 ---
 
-## 📈 ATLAS Score
+## **3. Algorithm**
 
-ATLAS = α·Reliability + β·Grounding + γ·Consistency − δ·Uncertainty
+### **Algorithm 1: ATLAS-RL Evaluation Pipeline**
+
+```python
+Input: Query q, corpus C
+Output: ATLAS score S
+
+1: D  ← Retrieve(q, C)
+2: a, logp      ← Generate(q, D)
+
+3: q' ← Paraphrase(q)
+4: D' ← Corrupt(D)
+5: a', logp'    ← Generate(q', D')
+
+6: C_score ← NLI(a ↔ a')
+7: G_score ← NLI(D ⇒ a)
+8: H_score ← NLI(D ⟂ a)
+9: U_score ← Uncertainty(logp)
+
+10: R ← Reliability(logp, logp')
+
+11: S ← αR + βG_score + γC_score − δU_score
+
+return S
+```
 
 ---
 
-## 📊 Main Results
+## **4. Reliability Formulation**
 
+```math
+R = 1 − σ( KL(p || p̃) )
+```
+
+Where:
+- p = original token distribution  
+- p̃ = perturbed token distribution  
+
+---
+
+## **5. ATLAS Score**
+
+```math
+ATLAS = αR + βG + γC − δU
+```
+
+| Component | Description |
+|----------|------------|
+| R | Stability under perturbation |
+| G | Grounding (NLI entailment) |
+| C | Consistency (bidirectional NLI) |
+| U | Uncertainty (entropy proxy) |
+
+---
+
+## **6. Training Objective**
+
+```python
+for batch in dataset:
+    outputs = model(batch)
+    ce_loss = CrossEntropy(outputs)
+
+    atlas_score = estimate_atlas(batch)
+
+    loss = ce_loss * (1 - atlas_score)
+
+    loss.backward()
+    optimizer.step()
+```
+
+---
+
+## **7. Core Modules**
+
+### Retrieval
+```python
+emb = SentenceTransformer("all-MiniLM-L6-v2")
+index = faiss.IndexFlatIP(384)
+```
+
+### Perturbation
+```python
+q' = paraphrase(q)
+D' = corrupt(D)
+```
+
+### Generation
+```python
+a, log_probs = model.generate(q, D)
+```
+
+### Diagnostics
+```python
+consistency   = NLI(a, a')
+grounding     = NLI(D, a)
+hallucination = NLI_contradiction(D, a)
+uncertainty   = -mean(log_probs)
+```
+
+### Reliability
+```python
+R = 1 - sigmoid(KL(logp, logp'))
+```
+
+---
+
+## **8. Main Results**
+
+```text
 ==================================================================================
   MAIN RESULTS
 ==================================================================================
-Model                 Accuracy(F1)          Hallucination         Consistency           Grounding             ATLAS Score         
+Model                 Accuracy(F1)    Hallucination    Consistency    Grounding    ATLAS Score
 ----------------------------------------------------------------------------------
-Baseline LLM          0.1954                0.3800                0.2891                0.1537                0.3695              
-RAG                   0.1182                0.2458                0.1755                0.3816                0.4095              
-ATLAS-RL              0.2192                0.1451                0.1977                0.3506                0.4057              
+Baseline LLM          0.1954          0.3800           0.2891         0.1537       0.3695
+RAG                   0.1182          0.2458           0.1755         0.3816       0.4095
+ATLAS-RL              0.2192          0.1451           0.1977         0.3506       0.4057
 ==================================================================================
-
-📁 Results saved at:
-/content/sample_data/main_results.csv
+```
 
 ---
 
-## 🔍 Key Observations
+## **9. Key Insight**
 
-- ATLAS-RL improves accuracy over baseline (0.2192 vs 0.1954)  
-- Significant reduction in hallucination (0.1451 vs 0.3800)  
-- Better grounding compared to baseline models  
-- Balanced reliability vs performance trade-off  
-
----
-
-## 🧪 Training Strategy
-
-ATLAS-RL introduces reliability-aware optimization:
-
-Loss = CrossEntropy × (1 − ATLAS Score)
-
-- Encourages stable generation  
-- Reduces hallucination  
-- Improves robustness under perturbations  
+```text
+Standard LLMs optimize for correctness.
+RAG optimizes for retrieval alignment.
+ATLAS-RL optimizes for reliability under perturbation.
+```
 
 ---
 
-## 📦 Installation
+## **10. Failure Mode Detection**
 
+```python
+if hallucination > 0.5:
+    failure = "hallucination"
+elif grounding < 0.3:
+    failure = "retrieval_error"
+elif consistency < 0.4:
+    failure = "inconsistency"
+```
+
+---
+
+## **11. Installation & Execution**
+
+```bash
 pip install faiss-cpu sentence-transformers datasets transformers torch
-
----
-
-## ▶️ Usage
-
 python ATLAS-RL.py
+```
 
 ---
 
-## 📁 Outputs
+## **12. Outputs**
 
-- main_results.csv → Main evaluation  
-- ablation_results.csv → Ablation study  
-
----
-
-## 🚀 Future Work
-
-- Multimodal extensions (vision + text)  
-- Scaling to larger LLMs  
-- RL-based reliability optimization  
-- Real-world deployment  
+```text
+main_results.csv      # evaluation results
+ablation_results.csv  # ablation study
+```
 
 ---
 
-## 🤝 Citation
+## **13. Contributions**
 
+```text
+• Reliability as a first-class optimization objective
+• Perturbation-based stability modeling
+• NLI-driven diagnostic decomposition
+• Unified training + evaluation framework
+```
+
+---
+
+## **14. Citation**
+
+```bibtex
 @article{atlas_rl_2026,
-  title={ATLAS-RL: Reliability-Aware Learning for Robust AI Systems},
-  author={Abhishek Yadav},
-  year={2026},
-  note={Target: ACL / EMNLP}
+  title   = {ATLAS-RL: Reliability-Aware Learning for Robust Language Models},
+  author  = {Abhishek Yadav},
+  year    = {2026},
+  note    = {Under submission to EMNLP}
 }
-
----
-
-## 👤 Author
-
-Abhishek Yadav  
-Portfolio: https://portfolio-655v.vercel.app/  
-LinkedIn: https://www.linkedin.com/in/abhishekskyyadav  
-GitHub: https://github.com/Abhishekai1  
-
----
-
-## ⚡ Research Note
-
-This work focuses on building AI systems that remain reliable under uncertainty, rather than optimizing only for accuracy.
+```
