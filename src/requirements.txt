@@ -1,0 +1,9 @@
+# ATLAS-RL Requirements (Kaggle-compatible)
+torch>=2.0.0
+transformers>=4.40.0
+sentence-transformers>=2.6.0
+faiss-cpu>=1.7.4
+datasets>=2.18.0
+numpy>=1.24.0
+Pillow>=9.0.0
+accelerate>=0.27.0
